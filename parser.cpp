@@ -1,6 +1,7 @@
 #include "ast.h"
 #include "lexer.h"
 #include <cstdio>
+#include <map>
 #include <memory>
 #include <vector>
 #include <string>
@@ -23,7 +24,14 @@ std::unique_ptr<SignatureASTNode> LogErrorS(const char *str) {
     return nullptr;
 }
 
-static std::unique_ptr<ExpressionASTNode> ParseExpression();
+static std::unique_ptr<ExpressionASTNode> ParseExpression() {
+    auto LHS = ParsePrimary();
+    if (!LHS) {
+        return nullptr;
+    } else {
+        ParseBinaryOperatorRHS(0, std::move(LHS));
+    }
+};
 
 static std::unique_ptr<ExpressionASTNode> ParseNumberExpression() {
     auto Result = std::make_unique<NumberExpressionASTNode>(NumVal);
@@ -83,4 +91,92 @@ static std::unique_ptr<ExpressionASTNode> ParsePrimaryExpression() {
         default:
             return LogError("unexpected token");
     }
+}
+
+// Binary Operator
+// 높을수록 우선순위 높음
+static std::map<char, int> BinaryOperatorPrecedence = {
+    {'<', 10},
+    {'+', 20},
+    {'-', 20},
+    {'*', 40},
+};
+
+static int GetTokenPrecedence() {
+    if (!isascii(CurrentToken)) {
+        return -1;
+    } else {
+        int TokenPrecedence = BinaryOperatorPrecedence[CurrentToken];
+        if (TokenPrecedence <= 0) {
+            return -1;
+        }
+        return TokenPrecedence;
+    }
+}
+
+static std::unique_ptr<ExpressionASTNode> ParseBinaryOperatorRHS
+(int ExpressionPrecedence,
+ std::unique_ptr<ExpressionASTNode> LHS) {
+    while (true) {
+        int TokenPrecedence = GetTokenPrecedence();
+
+        if (TokenPrecedence < ExpressionPrecedence) {
+            return LHS;
+        }
+
+        // 현재 연산자 기억
+        int BinaryOperator = CurrentToken;
+        getNextToken();
+
+        auto RHS = ParsePrimaryExpression();
+        if (!RHS) {
+            return nullptr;
+        }
+
+        // 재귀
+        int NextPrecedence = GetTokenPrecedence();
+        if (TokenPrecedence < NextPrecedence) {
+            RHS = ParseBinaryOperatorRHS(TokenPrecedence + 1, std::move(RHS));
+            if (!RHS) {
+                return nullptr;
+            }
+        }
+        LHS = std::make_unique<BinaryExpressionASTNode>(BinaryOperator, std::move(LHS), std::move(RHS));
+    }
+}
+
+static std::unique_ptr<SignatureASTNode> ParseSignature() {
+    if (CurrentToken != tok_identifier) {
+        return LogErrorS("Expected function name in signature");
+    }
+    std::string FunctionName = IdentifierStr;
+    getNextToken();
+
+    if (CurrentToken != '(') {
+        return LogErrorS("Expected '(' in signature");
+    }
+
+    std::vector<std::string> ArgumentNames;
+    while (getNextToken() == tok_identifier) {
+        ArgumentNames.push_back(IdentifierStr);
+    }
+
+    if (CurrentToken != ')') {
+        return LogErrorS("Expected ')' in signature");
+    }
+    getNextToken();
+    return std::make_unique<SignatureASTNode>(FunctionName, std::move(ArgumentNames));
+}
+
+static std::unique_ptr<SignatureASTNode> ParseExtern() {
+    getNextToken();
+    return ParseSignature();
+}
+
+static std::unique_ptr<FunctionASTNode> ParseTopLevelExpression() {
+    if (auto E = ParseExpression()) {
+        auto Signature = std::make_unique<SignatureASTNode>("__anon_expr", std::vector<std::string>());
+        return std::make_unique<FunctionASTNode>(std::move(Signature), std::move(E));
+    }
+    return nullptr;
 }
