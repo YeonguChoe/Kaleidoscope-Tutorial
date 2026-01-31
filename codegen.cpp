@@ -6,10 +6,10 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Value.h"
 
-static std::unique_ptr<llvm::LLVMContext> TheContext;
-static std::unique_ptr<llvm::IRBuilder<>> Builder;
-static std::unique_ptr<llvm::Module> TheModule;
-static std::map<std::string, llvm::Value *> NamedValues;
+static std::unique_ptr<llvm::LLVMContext> TheContext; // Tool set
+static std::unique_ptr<llvm::IRBuilder<>> Builder; // Generate IR
+static std::unique_ptr<llvm::Module> TheModule; // IR code container
+static std::map<std::string, llvm::Value *> NamedValues; // Symbol table
 
 llvm::Value *LogErrorV(const char *str) {
     LogError(str);
