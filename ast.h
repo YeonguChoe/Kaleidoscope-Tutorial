@@ -6,93 +6,95 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <llvm/IR/Value.h>
 
-namespace ASTNode
-{
-    class ExpressionASTNode
-    {
+namespace ASTNode {
+    class ExpressionASTNode {
     public:
-        virtual ~ExpressionASTNode()
-        {
-            std::cout << "AST has been deleted" << std::endl;
-        }
+        virtual ~ExpressionASTNode() = default;
+
+        // pure virtual
+        // llvm::Value - constant, instruction, function, argument, global variable, block
+        virtual llvm::Value *codegen() = 0;
     };
 
-    class NumberExpressionASTNode : public ExpressionASTNode
-    {
+    class NumberExpressionASTNode : public ExpressionASTNode {
         double value;
 
     public:
-        NumberExpressionASTNode(double value)
-        {
-            this->value = value;
+        NumberExpressionASTNode(double value) : value(value) {
         }
+
+        llvm::Value *codegen() override;
     };
 
-    class VariableExpressionASTNode : public ExpressionASTNode
-    {
+    class VariableExpressionASTNode : public ExpressionASTNode {
         std::string Name;
 
     public:
-        VariableExpressionASTNode(const std::string &Name)
-        {
+        VariableExpressionASTNode(const std::string &Name) {
             this->Name = Name;
         }
+
+        llvm::Value *codegen() override;
     };
 
-    class BinaryExpressionASTNode : public ExpressionASTNode
-    {
+    class BinaryExpressionASTNode : public ExpressionASTNode {
         char Operator;
         std::unique_ptr<ExpressionASTNode> LHS, RHS;
 
     public:
-        BinaryExpressionASTNode(char Operator, std::unique_ptr<ExpressionASTNode> LHS, std::unique_ptr<ExpressionASTNode> RHS)
-        {
+        BinaryExpressionASTNode(char Operator, std::unique_ptr<ExpressionASTNode> LHS,
+                                std::unique_ptr<ExpressionASTNode> RHS) {
             this->Operator = Operator;
             this->LHS = std::move(LHS);
             this->RHS = std::move(RHS);
         }
+
+        llvm::Value *codegen() override;
     };
 
-    class FunctionCallExpressionASTNode : public ExpressionASTNode
-    {
+    class FunctionCallExpressionASTNode : public ExpressionASTNode {
         std::string Callee;
-        std::vector<std::unique_ptr<ExpressionASTNode>> Arguments;
+        std::vector<std::unique_ptr<ExpressionASTNode> > Arguments;
 
     public:
         FunctionCallExpressionASTNode(const std::string &Callee,
-                                      std::vector<std::unique_ptr<ExpressionASTNode>> Arguments)
-        {
+                                      std::vector<std::unique_ptr<ExpressionASTNode> > Arguments) {
             this->Callee = Callee;
             this->Arguments = std::move(Arguments);
         }
+
+        llvm::Value *codegen() override;
     };
 
-    class SignatureASTNode
-    {
+    class SignatureASTNode {
         std::string Name;
         std::vector<std::string> Arguments;
 
     public:
-        SignatureASTNode(const std::string &Name, std::vector<std::string> Arguments)
-        {
+        SignatureASTNode(const std::string &Name, std::vector<std::string> Arguments) {
             this->Name = Name;
             this->Arguments = std::move(Arguments);
         }
+
+        llvm::Function *codegen();
+
+        const std::string &getName() const { return Name; }
     };
 
-    class FunctionASTNode
-    {
+    class FunctionASTNode {
         std::unique_ptr<SignatureASTNode> Signature;
         std::unique_ptr<ExpressionASTNode> Body;
 
     public:
         FunctionASTNode(std::unique_ptr<SignatureASTNode> Signature,
-                        std::unique_ptr<ExpressionASTNode> Body)
-        {
+                        std::unique_ptr<ExpressionASTNode> Body) {
             this->Signature = std::move(Signature);
             this->Body = std::move(Body);
         }
+
+        llvm::Function *codegen();
     };
 }
 
