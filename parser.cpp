@@ -6,6 +6,8 @@
 #include <vector>
 #include <string>
 #include <cctype>
+#include <llvm/IR/Function.h>
+#include <llvm/Support/raw_ostream.h>
 
 using namespace ASTNode;
 
@@ -204,24 +206,38 @@ static std::unique_ptr<FunctionASTNode> ParseTopLevelExpression() {
 
 // Top Level parsing
 static void HandleDefinition() {
-    if (ParseDefinition()) {
+    auto FunctionAST = ParseDefinition();
+    if (FunctionAST != nullptr) {
+        auto *FunctionIR = FunctionAST->codegen();
         fprintf(stderr, "Parsed a function definition.\n");
+        FunctionIR->print(llvm::errs());
     } else {
         getNextToken();
     }
 }
 
 static void HandleExtern() {
-    if (ParseExtern()) {
-        fprintf(stderr, "Parsed an extern\n");
+    auto FunctionAST = ParseExtern();
+    if (FunctionAST != nullptr) {
+        auto *FunctionIR = FunctionAST->codegen();
+        if (FunctionIR != nullptr) {
+            fprintf(stderr, "Parsed an extern\n");
+            FunctionIR->print(llvm::errs());
+        }
     } else {
         getNextToken();
     }
 }
 
 static void HandleTopLevelExpression() {
-    if (ParseTopLevelExpression()) {
-        fprintf(stderr, "Parsed a top-level expression\n");
+    auto FunctionAST = ParseTopLevelExpression();
+    if (FunctionAST != nullptr) {
+        auto *FunctionIR = FunctionAST->codegen();
+        if (FunctionIR != nullptr) {
+            fprintf(stderr, "Parsed a top-level expression\n");
+            FunctionIR->print(llvm::errs());
+            FunctionIR->eraseFromParent();
+        }
     } else {
         getNextToken();
     }

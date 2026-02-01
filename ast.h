@@ -14,6 +14,7 @@ namespace ASTNode {
         virtual ~ExpressionASTNode() = default;
 
         // pure virtual
+        // llvm::Value - constant, instruction, function, argument, global variable, block
         virtual llvm::Value *codegen() = 0;
     };
 
@@ -34,6 +35,8 @@ namespace ASTNode {
         VariableExpressionASTNode(const std::string &Name) {
             this->Name = Name;
         }
+
+        llvm::Value *codegen() override;
     };
 
     class BinaryExpressionASTNode : public ExpressionASTNode {
@@ -47,6 +50,8 @@ namespace ASTNode {
             this->LHS = std::move(LHS);
             this->RHS = std::move(RHS);
         }
+
+        llvm::Value *codegen() override;
     };
 
     class FunctionCallExpressionASTNode : public ExpressionASTNode {
@@ -59,6 +64,8 @@ namespace ASTNode {
             this->Callee = Callee;
             this->Arguments = std::move(Arguments);
         }
+
+        llvm::Value *codegen() override;
     };
 
     class SignatureASTNode {
@@ -70,6 +77,10 @@ namespace ASTNode {
             this->Name = Name;
             this->Arguments = std::move(Arguments);
         }
+
+        llvm::Function *codegen();
+
+        const std::string &getName() const { return Name; }
     };
 
     class FunctionASTNode {
@@ -82,6 +93,8 @@ namespace ASTNode {
             this->Signature = std::move(Signature);
             this->Body = std::move(Body);
         }
+
+        llvm::Function *codegen();
     };
 }
 
